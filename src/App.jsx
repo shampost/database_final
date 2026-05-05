@@ -10,31 +10,45 @@ function App() {
   const [session, setSession] = useState(null)
 
   return (
-    <main className="market-container">
-      <header className="market-header">
-        <h1>Quad Exchange</h1>
-        <p>Discover, trade, and upgrade your campus essentials.</p>
+    <main className="market-shell">
+      <header className="market-hero glass">
+        <div className="hero-branding">
+          <div className="brand-mark" aria-hidden="true">DU</div>
+          <div>
+            <p className="section-kicker">Dominican University Marketplace</p>
+          </div>
+        </div>
+        <div className="hero-grid">
+          <div className="hero-copy">
+            <p className="hero-text">
+              Photo-first listings, clear prices, and a cleaner way to trade dorm essentials, tech, books, and campus gear.
+            </p>
+            <div className="hero-chips" aria-label="Marketplace highlights">
+              <span className="hero-chip">Sell Fast</span>
+              <span className="hero-chip">Campus pickups</span>
+              <span className="hero-chip">Upfront Pricing</span>
+            </div>
+          </div>
+          <section className="auth-panel glass">
+            <Auth onSession={(s) => setSession(s)} />
+            {!session && <p className="helper-copy">Sign in to list items. Browsing stays open.</p>}
+          </section>
+        </div>
       </header>
-      <section className="auth-panel glass">
-        <Auth onSession={(s) => setSession(s)} />
-        {!session && (
-          <p style={{ color: 'var(--color-text-muted)', margin: '0', fontSize: '.7rem' }}>
-            Sign in to list items. Browsing is open to everyone.
-          </p>
-        )}
-      </section>
       <Routes>
-        <Route path="/" element={
-          <>
-            <section className="form-panel glass">
-              <ListingForm user={session?.user} />
+        <Route
+          path="/"
+          element={
+            <section className="market-grid">
+              <section className="form-panel glass">
+                <ListingForm user={session?.user} />
+              </section>
+              <section className="posts-section">
+                <ListingList user={session?.user} />
+              </section>
             </section>
-            <hr className="divider" />
-            <section className="posts-section">
-              <ListingList user={session?.user} />
-            </section>
-          </>
-        } />
+          }
+        />
         <Route path="/post/:id" element={<PostPage user={session?.user} />} />
       </Routes>
     </main>

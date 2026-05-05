@@ -56,8 +56,11 @@ export default function Auth({ onSession }) {
   // If signed in: show compact panel with user email + sign out.
   if (session?.user) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-        <span style={{ fontSize: '.8rem', color: 'var(--color-text-muted)' }}>Signed in as <strong>{session.user.email}</strong></span>
+      <div className="auth-signed-in">
+        <div className="auth-status">
+          <span className="auth-badge">Active</span>
+          <span className="auth-caption">Signed in as <strong>{session.user.email}</strong></span>
+        </div>
         <button type="button" onClick={signOut} disabled={loading}>{loading ? '...' : 'Sign Out'}</button>
       </div>
     )
@@ -65,12 +68,12 @@ export default function Auth({ onSession }) {
 
   // Not signed in: show sign in / sign up form.
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.6rem', margin: 0 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '.45rem' }}>
+    <form onSubmit={handleSubmit} className="auth-form">
+      <div className="auth-fields">
         <input
           type="email"
           required
-          placeholder="Email"
+          placeholder="Campus email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -82,16 +85,14 @@ export default function Auth({ onSession }) {
           onChange={(e) => setPassword(e.target.value)}
         />
       </div>
-      <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
+      <div className="auth-actions">
         <button type="submit" disabled={loading}>{loading ? '...' : (mode === 'signup' ? 'Create Account' : 'Sign In')}</button>
         <button type="button" disabled={loading} onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}>
           {mode === 'signup' ? 'Switch to Sign In' : 'Switch to Sign Up'}
         </button>
       </div>
-      {error && <p style={{ color: 'crimson', margin: 0 }}>{error}</p>}
-      <p style={{ fontSize: '.65rem', margin: 0, color: 'var(--color-text-muted)' }}>
-        Secure accounts let you manage your listings and messages.
-      </p>
+      {error && <p className="auth-error">{error}</p>}
+      <p className="auth-footnote">Secure accounts let you manage your listings and messages.</p>
     </form>
   )
 }

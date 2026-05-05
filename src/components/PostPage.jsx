@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient.js'
+import ImagePreview from './ImagePreview.jsx'
 
 export default function PostPage({ user }) {
   const { id } = useParams()
@@ -121,72 +122,105 @@ export default function PostPage({ user }) {
     if (delErr) alert('Delete failed: ' + delErr.message)
   }
 
-  if (loading) return <p>Loading post...</p>
-  if (error) return <p style={{ color: 'crimson' }}>Error: {error}</p>
-  if (!post) return <p>Post not found.</p>
+  function formatPrice(price) {
+    if (price == null || Number.isNaN(Number(price))) return 'Price on request'
+    const numericPrice = Number(price)
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: Number.isInteger(numericPrice) ? 0 : 2
+    }).format(numericPrice)
+  }
+
+  if (loading) return <p className="feed-state">Loading post...</p>
+  if (error) return <p className="feed-state feed-error">Error: {error}</p>
+  if (!post) return <p className="feed-state">Post not found.</p>
 
   const isOwner = user && user.id === post.seller_id
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <button type="button" onClick={() => navigate(-1)} style={{ width: 'fit-content' }}>← Back</button>
+    <div className="detail-shell">
+      <button type="button" onClick={() => navigate(-1)} className="back-button">← Back to feed</button>
       {!editMode && (
-        <div className="post-detail glass" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
-          <h2 style={{ margin: 0 }}>{post.title || '(Untitled)'}</h2>
-          <time style={{ fontSize: '.7rem', color: 'var(--color-text-muted)' }} dateTime={post.created_at}>{new Date(post.created_at).toLocaleString()}</time>
-          {post.image_url && <img src={post.image_url} alt={post.title} style={{ maxWidth: '100%', borderRadius: '.4rem' }} />}
-          {post.description && <p style={{ margin: 0 }}>{post.description}</p>}
-          <div style={{ display: 'flex', gap: '.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '.85rem' }}>Condition: {post.condition || 'Unknown'}</span>
-            {post.price != null && <span style={{ fontSize: '.85rem' }}>Price: ${post.price}</span>}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Upvotes: {post.upvotes || 0}</span>
-            <button type="button" onClick={upvote}>⬆ Upvote</button>
-          </div>
-          {isOwner && (
-            <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => setEditMode(true)} style={{ background: 'var(--color-surface-alt)' }}>Edit</button>
-              <button type="button" onClick={deletePost} style={{ background: 'crimson' }}>Delete</button>
+        <div className="detail-grid">
+          <section className="detail-panel glass">
+            <div className="detail-media">
+              {post.image_url ? (
+                <ImagePreview src={post.image_url} alt={post.title} />
+              ) : (
+                <div className="card-placeholder detail-placeholder">
+                  <span className="card-placeholder-mark">DU</span>
+                  <span className="card-placeholder-text">No photo uploaded</span>
+                </div>
+              )}
             </div>
-          )}
+            <div className="detail-copy">
+              <p className="section-kicker">Listing detail</p>
+              <h2>{post.title || '(Untitled)'}</h2>
+              <div className="detail-price-row">
+                <span className="price-pill price-pill-large">{formatPrice(post.price)}</span>
+                <span className="condition-pill">{post.condition || 'Unknown'}</span>
+              </div>
+              {post.description && <p className="detail-description">{post.description}</p>}
+              <div className="card-meta detail-meta">
+                <time dateTime={post.created_at}>{new Date(post.created_at).toLocaleString()}</time>
+                <span>Upvotes {post.upvotes || 0}</span>
+              </div>
+            </div>
+            <div className="detail-actions">
+              <button type="button" onClick={upvote}>⬆ Upvote</button>
+              {isOwner && (
+                <>
+                  <button type="button" onClick={() => setEditMode(true)} className="secondary-button">Edit</button>
+                  <button type="button" onClick={deletePost} className="danger-button">Delete</button>
+                </>
+              )}
+            </div>
+          </section>
+          <section className="comments-section glass">
+            <div className="panel-heading compact">
+              <p className="section-kicker">Conversation</p>
+              <h3>Comments ({comments.length})</h3>
+            </div>
+            <form onSubmit={addComment} className="comment-form">
+              <textarea rows={3} placeholder={user ? 'Add a comment...' : 'Sign in to comment'} value={commentText} onChange={(e) => setCommentText(e.target.value)} disabled={!user || cLoading} />
+              <button disabled={!user || cLoading || !commentText.trim()} type="submit">{cLoading ? 'Posting...' : 'Post Comment'}</button>
+            </form>
+            <div className="comment-list">
+              {comments.map(c => (
+                <div key={c.id} className="comment glass">
+                  <p>{c.content}</p>
+                  <div className="comment-footer">
+                    <time dateTime={c.created_at}>{new Date(c.created_at).toLocaleString()}</time>
+                    {user?.id === c.user_id && <button type="button" onClick={() => deleteComment(c.id)} className="danger-button">Delete</button>}
+                  </div>
+                </div>
+              ))}
+              {comments.length === 0 && <p className="empty-copy">No comments yet.</p>}
+            </div>
+          </section>
         </div>
       )}
       {editMode && (
-        <form onSubmit={saveEdit} className="glass" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-          <h3 style={{ margin: 0 }}>Edit Post</h3>
-          <input required name="title" value={form.title} onChange={handleFormChange} placeholder="Title" />
+        <form onSubmit={saveEdit} className="glass edit-panel">
+          <div className="panel-heading compact">
+            <p className="section-kicker">Edit listing</p>
+            <h3>Edit Post</h3>
+          </div>
+          <input required name="title" value={form.title} onChange={handleFormChange} placeholder="Item name" />
           <textarea name="description" rows={4} value={form.description} onChange={handleFormChange} placeholder="Description" />
           <input name="price" type="number" min="0" step="0.01" value={form.price} onChange={handleFormChange} placeholder="Price" />
           <select name="condition" value={form.condition} onChange={handleFormChange}>
             {['New','Like New','Good','Fair','Poor'].map(c => <option key={c}>{c}</option>)}
           </select>
-          <input name="image_url" type="url" value={form.image_url} onChange={handleFormChange} placeholder="Image URL" />
-          <div style={{ display: 'flex', gap: '.5rem' }}>
+          <input name="image_url" type="url" value={form.image_url} onChange={handleFormChange} placeholder="Direct image URL" />
+          <p className="field-note">Use a direct image file URL. Unsplash photo pages like /photos/... are not image files.</p>
+          <div className="auth-actions">
             <button disabled={saving} type="submit">{saving ? 'Saving...' : 'Save Changes'}</button>
-            <button type="button" onClick={() => setEditMode(false)} style={{ background: 'var(--color-surface-alt)' }}>Cancel</button>
+            <button type="button" onClick={() => setEditMode(false)} className="secondary-button">Cancel</button>
           </div>
         </form>
       )}
-      <section className="comments-section" style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
-        <h3 style={{ margin: 0 }}>Comments ({comments.length})</h3>
-        <form onSubmit={addComment} style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-          <textarea rows={3} placeholder={user ? 'Add a comment...' : 'Sign in to comment'} value={commentText} onChange={(e) => setCommentText(e.target.value)} disabled={!user || cLoading} />
-          <button disabled={!user || cLoading || !commentText.trim()} type="submit">{cLoading ? 'Posting...' : 'Post Comment'}</button>
-        </form>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-          {comments.map(c => (
-            <div key={c.id} className="comment glass" style={{ padding: '.6rem', borderRadius: '.5rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-              <p style={{ margin: 0 }}>{c.content}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <time style={{ fontSize: '.6rem', color: 'var(--color-text-muted)' }} dateTime={c.created_at}>{new Date(c.created_at).toLocaleString()}</time>
-                {user?.id === c.user_id && <button type="button" onClick={() => deleteComment(c.id)} style={{ background: 'crimson' }}>Delete</button>}
-              </div>
-            </div>
-          ))}
-          {comments.length === 0 && <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>No comments yet.</p>}
-        </div>
-      </section>
     </div>
   )
 }

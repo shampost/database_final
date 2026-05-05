@@ -49,21 +49,25 @@ export default function ListingForm({ user }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-      <h2 style={{ margin: 0 }}>Create Post</h2>
+    <form onSubmit={handleSubmit} className="listing-form">
+      <div className="panel-heading">
+        <p className="section-kicker">Sell an item</p>
+        <h2>Post a listing</h2>
+        <p className="panel-note">Keep it simple: a clear title, price, condition, and a photo if you have one.</p>
+      </div>
       <input
         required
-        placeholder="Title"
+        placeholder="Item name"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
       <textarea
-        placeholder="Description (optional)"
+        placeholder="Short description (optional)"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={3}
       />
-      <div style={{ display: 'flex', gap: '.6rem' }}>
+      <div className="form-row">
         <input
           required
           type="number"
@@ -72,9 +76,8 @@ export default function ListingForm({ user }) {
           placeholder="Price"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          style={{ flex: 1 }}
         />
-        <select value={condition} onChange={(e) => setCondition(e.target.value)} style={{ flex: 1 }}>
+        <select value={condition} onChange={(e) => setCondition(e.target.value)}>
           {['New', 'Like New', 'Good', 'Fair', 'Poor'].map((c) => (
             <option key={c}>{c}</option>
           ))}
@@ -82,13 +85,16 @@ export default function ListingForm({ user }) {
       </div>
       <input
         type="url"
-        placeholder="Image URL (optional)"
+        placeholder="Direct image URL (optional)"
         value={imageUrl}
         onChange={(e) => setImageUrl(e.target.value)}
       />
+      <p className="field-note">
+        Paste the image file URL itself.
+      </p>
       <button disabled={loading} type="submit">{loading ? 'Saving...' : 'Post Item'}</button>
-      {error && <p style={{ color: 'crimson', margin: 0 }}>Error: {error}</p>}
-      {success && <p style={{ color: 'var(--color-primary-accent)', margin: 0 }}>Post created!</p>}
+      {error && <p className="form-error">Error: {error}</p>}
+      {success && <p className="form-success">Post created!</p>}
     </form>
   )
 }

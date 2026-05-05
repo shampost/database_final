@@ -1,24 +1,65 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { Link } from 'react-router-dom'
+import ImagePreview from './ImagePreview.jsx'
 
 export default function ListingList({ user }) {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [orderBy, setOrderBy] = useState('created_at') // or 'upvotes'
+  const [searchTerm, setSearchTerm] = useState('')
 
   async function load() {
     setLoading(true)
     const column = orderBy === 'upvotes' ? 'upvotes' : 'created_at'
     const { data, error: selectError } = await supabase
       .from('posts')
-      .select('id,title,created_at,upvotes')
+      .select('id,title,description,price,condition,image_url,created_at,upvotes')
       .order(column, { ascending: false })
       .limit(100)
     if (selectError) setError(selectError.message)
     else setPosts(data || [])
     setLoading(false)
+  }
+
+  const visiblePosts = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase()
+    if (!query) return posts
+    return posts.filter((post) => {
+      const searchable = [post.title, post.description, post.condition]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return searchable.includes(query)
+    })
+  }, [posts, searchTerm])
+
+  function formatPrice(price) {
+    if (price == null || Number.isNaN(Number(price))) return 'Price on request'
+    const numericPrice = Number(price)
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: Number.isInteger(numericPrice) ? 0 : 2
+    }).format(numericPrice)
+  }
+
+  function initialsFromTitle(title) {
+    return (title || 'DU').slice(0, 2).toUpperCase()
+  }
+
+  function listingRecord(payload) {
+    return {
+      id: payload.new.id,
+      title: payload.new.title,
+      description: payload.new.description,
+      price: payload.new.price,
+      condition: payload.new.condition,
+      image_url: payload.new.image_url,
+      created_at: payload.new.created_at,
+      upvotes: payload.new.upvotes
+    }
   }
 
   useEffect(() => {
@@ -29,13 +70,10 @@ export default function ListingList({ user }) {
     const channel = supabase
       .channel('public:posts')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
-        setPosts((prev) => [
-          { id: payload.new.id, title: payload.new.title, created_at: payload.new.created_at, upvotes: payload.new.upvotes },
-          ...prev
-        ])
+        setPosts((prev) => [listingRecord(payload), ...prev])
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, (payload) => {
-        setPosts((prev) => prev.map(p => p.id === payload.new.id ? { id: payload.new.id, title: payload.new.title, created_at: payload.new.created_at, upvotes: payload.new.upvotes } : p))
+        setPosts((prev) => prev.map((post) => (post.id === payload.new.id ? listingRecord(payload) : post)))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, (payload) => {
         setPosts((prev) => prev.filter(p => p.id !== payload.old.id))
@@ -54,31 +92,78 @@ export default function ListingList({ user }) {
     }
   }
 
-  if (loading) return <p>Loading posts...</p>
-  if (error) return <p style={{ color: 'crimson' }}>Error: {error}</p>
+  if (loading) return <p className="feed-state">Loading campus listings...</p>
+  if (error) return <p className="feed-state feed-error">Error: {error}</p>
 
   return (
-    <div>
-      <div style={{ display: 'flex', flexDirection: 'row', gap: '.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0 }}>Home Feed</h2>
-        <button type="button" onClick={() => setOrderBy(orderBy === 'created_at' ? 'upvotes' : 'created_at')} style={{ background: 'var(--color-surface-alt)' }}>
+    <div className="market-section">
+      <div className="market-toolbar glass">
+        <div className="toolbar-search">
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search items, prices, or conditions"
+            aria-label="Search listings"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setOrderBy(orderBy === 'created_at' ? 'upvotes' : 'created_at')}
+          className="toolbar-button"
+        >
           Sort: {orderBy === 'created_at' ? 'Newest' : 'Top Upvotes'}
         </button>
       </div>
-      {posts.length === 0 && <p style={{ color: 'var(--color-text-muted)', marginTop: '.75rem' }}>No posts yet.</p>}
-      <div className="post-grid" style={{ marginTop: '1rem' }}>
-        {posts.map((p) => (
-          <article key={p.id} className="post-card" style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-            <Link to={`/post/${p.id}`} className="post-title" style={{ textDecoration: 'none' }}>{p.title || '(Untitled)'}</Link>
-            <time style={{ fontSize: '.65rem', color: 'var(--color-text-muted)' }} dateTime={p.created_at}>{new Date(p.created_at).toLocaleString()}</time>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '.8rem' }}>Upvotes: {p.upvotes || 0}</span>
-              <button type="button" onClick={() => upvote(p)} style={{ padding: '.35rem .6rem' }}>⬆ Upvote</button>
+
+      <div className="toolbar-meta">
+        <span>{user ? 'Signed in' : 'Browsing as guest'}</span>
+        <span>{visiblePosts.length} results</span>
+      </div>
+
+      {visiblePosts.length === 0 && (
+        <div className="empty-state glass">
+          <h3>No listings found</h3>
+          <p>Try a broader search or post the first item.</p>
+        </div>
+      )}
+
+      <div className="post-grid">
+        {visiblePosts.map((p) => (
+          <article key={p.id} className="post-card marketplace-card">
+            <Link to={`/post/${p.id}`} className="card-media" aria-label={p.title || 'Open listing'}>
+              {p.image_url ? (
+                <ImagePreview src={p.image_url} alt={p.title} variant="card" title={p.title} />
+              ) : (
+                <div className="card-placeholder card-placeholder-image">
+                  <span className="card-placeholder-mark">{initialsFromTitle(p.title)}</span>
+                  <span className="card-placeholder-text">No photo uploaded</span>
+                </div>
+              )}
+            </Link>
+            <div className="card-body">
+              <div className="card-top">
+                <span className="price-pill">{formatPrice(p.price)}</span>
+                <span className="condition-pill">{p.condition || 'Unknown'}</span>
+              </div>
+              <Link to={`/post/${p.id}`} className="post-title">
+                {p.title || '(Untitled)'}
+              </Link>
+              <p className="post-desc">{p.description || 'Student listing ready for campus pickup.'}</p>
+              <div className="card-meta">
+                <time dateTime={p.created_at}>{new Date(p.created_at).toLocaleDateString()}</time>
+                <span>Upvotes {p.upvotes || 0}</span>
+              </div>
+              <div className="card-actions">
+                <button type="button" onClick={() => upvote(p)} className="ghost-button">⬆ Upvote</button>
+                <Link to={`/post/${p.id}`} className="secondary-link">View details</Link>
+              </div>
             </div>
           </article>
         ))}
       </div>
-      <div style={{ marginTop: '1rem', display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+
+      <div className="feed-actions">
         <button onClick={load}>Refresh</button>
       </div>
     </div>
