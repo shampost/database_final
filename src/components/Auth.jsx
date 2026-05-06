@@ -12,6 +12,7 @@ export default function Auth({ onSession }) {
   useEffect(() => {
     let mounted = true
     async function init() {
+      // Grab the current session first so refreshes do not kick the user out.
       const { data: { session } } = await supabase.auth.getSession()
       if (mounted) {
         setSession(session)
@@ -53,7 +54,6 @@ export default function Auth({ onSession }) {
     setLoading(false)
   }
 
-  // If signed in: show compact panel with user email + sign out.
   if (session?.user) {
     return (
       <div className="auth-signed-in">
@@ -66,7 +66,6 @@ export default function Auth({ onSession }) {
     )
   }
 
-  // Not signed in: show sign in / sign up form.
   return (
     <form onSubmit={handleSubmit} className="auth-form">
       <div className="auth-fields">

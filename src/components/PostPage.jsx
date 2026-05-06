@@ -41,12 +41,12 @@ export default function PostPage({ user }) {
   useEffect(() => {
     loadPost()
     loadComments()
-    // Subscribe only to comments for this post using filtered realtime events.
+    // Keep comments live so the page updates without a hard refresh.
     const channel = supabase
       .channel(`comments-post-${id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `post_id=eq.${id}` }, (payload) => {
         setComments(prev => {
-          if (prev.some(c => c.id === payload.new.id)) return prev // avoid duplicate if optimistic already added
+          if (prev.some(c => c.id === payload.new.id)) return prev
           return [...prev, { id: payload.new.id, content: payload.new.content, created_at: payload.new.created_at, user_id: payload.new.user_id }]
         })
       })
@@ -107,7 +107,7 @@ export default function PostPage({ user }) {
     if (insErr) {
       alert('Comment failed: ' + insErr.message)
     } else if (data && data[0]) {
-      // Optimistic append; realtime may also fire, guarded by duplicate check.
+      // Add it right away so the reply feels instant.
       setComments(prev => prev.some(c => c.id === data[0].id) ? prev : [...prev, data[0]])
       setCommentText('')
     }

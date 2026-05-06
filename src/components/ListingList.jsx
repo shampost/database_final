@@ -7,7 +7,7 @@ export default function ListingList({ user }) {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [orderBy, setOrderBy] = useState('created_at') // or 'upvotes'
+  const [orderBy, setOrderBy] = useState('created_at')
   const [searchTerm, setSearchTerm] = useState('')
 
   async function load() {
@@ -67,6 +67,7 @@ export default function ListingList({ user }) {
   }, [orderBy])
 
   useEffect(() => {
+    // Realtime keeps the feed feeling active when somebody posts or edits.
     const channel = supabase
       .channel('public:posts')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
@@ -112,6 +113,7 @@ export default function ListingList({ user }) {
           onClick={() => setOrderBy(orderBy === 'created_at' ? 'upvotes' : 'created_at')}
           className="toolbar-button"
         >
+          {/* Simple toggle so users can switch between newest and most popular. */}
           Sort: {orderBy === 'created_at' ? 'Newest' : 'Top Upvotes'}
         </button>
       </div>

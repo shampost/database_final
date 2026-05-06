@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient.js'
 
-// Clean, single component definition for creating posts.
 export default function ListingForm({ user }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -89,6 +88,7 @@ export default function ListingForm({ user }) {
         value={imageUrl}
         onChange={(e) => setImageUrl(e.target.value)}
       />
+      {/* This needs a direct image link, not a page link like an Unsplash photo page. */}
       <p className="field-note">
         Paste the image file URL itself.
       </p>
