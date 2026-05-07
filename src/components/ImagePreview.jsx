@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 function isLikelyDirectImageUrl(url) {
+  // let ai handle regex generation
   return /\.(avif|gif|jpe?g|png|webp|svg)(\?|#|$)/i.test(url)
 }
 
