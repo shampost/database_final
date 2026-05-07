@@ -18,6 +18,7 @@ export default function PostPage({ user }) {
 
   async function loadPost() {
     setLoading(true)
+    // Pull the post first so the page always shows the latest version.
     const { data, error: selError } = await supabase.from('posts').select('*').eq('id', id).single()
     if (selError) setError(selError.message)
     else {
@@ -41,7 +42,7 @@ export default function PostPage({ user }) {
   useEffect(() => {
     loadPost()
     loadComments()
-    // Keep comments live so the page updates without a hard refresh.
+    // Keep the comments live so the page updates without a hard refresh.
     const channel = supabase
       .channel(`comments-post-${id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `post_id=eq.${id}` }, (payload) => {
@@ -107,7 +108,7 @@ export default function PostPage({ user }) {
     if (insErr) {
       alert('Comment failed: ' + insErr.message)
     } else if (data && data[0]) {
-      // Add it right away so the reply feels instant.
+      // Show the new comment right away so it feels instant.
       setComments(prev => prev.some(c => c.id === data[0].id) ? prev : [...prev, data[0]])
       setCommentText('')
     }
